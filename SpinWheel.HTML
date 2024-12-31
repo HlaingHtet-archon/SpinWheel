@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spin Wheel</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <style>
+        .input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group-append {
+            position: relative;
+            z-index: 1;
+        }
+
+        .remove-column {
+            background: none;
+            border: none;
+            color: red;
+            font-size: 1.7em;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
+        .remove-column:hover {
+            color: darkred;
+            background-color: red;
+        }
+
+        .wheel-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 50vh;
+            background: transparent;
+        }
+
+        svg {
+            width: 300px;
+            height: 300px;
+            transform-origin: center;
+            cursor: pointer;
+        }
+
+        .spin-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            background: black;
+            color: white;
+            border-radius: 50%;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        #processFile {
+            margin-top: 10px;
+        }
+
+        .processing-message {
+            display: none;
+            font-size: 2em;
+            font-weight: bold;
+            color: #007BFF;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .phase-label {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .previous-data-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            display: none;
+        }
+
+        .phase-box {
+            flex: 1 1 calc(33% - 40px);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #fff;
+        }
+
+        .phase-box:hover {
+            background-color: #f1f1f1;
+        }
+
+        .phase-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .phase-details {
+            font-size: 0.9em;
+        }
+
+        .show-more {
+            color: #007BFF;
+            cursor: pointer;
+        }
+
+        .card-content {
+            display: none;
+        }
+
+        .card-content.show {
+            display: block;
+        }
+
+        .processing-data {
+            font-size: 1.2em;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-left: 5px solid #007BFF;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">SpinWheel</h1>
+        <div class="spinWheelContainer">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="wheel-container"> <svg id="wheel" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="48" fill="#FFD700" />
+                            <path d="M50 2 A48 48 0 0 1 73.5 8.2 L50 50 Z" fill="#FFA500" />
+                            <path d="M73.5 8.2 A48 48 0 0 1 91.8 26.5 L50 50 Z" fill="#FFD700" />
+                            <path d="M91.8 26.5 A48 48 0 0 1 97.9 50 L50 50 Z" fill="#FFA500" />
+                            <path d="M97.9 50 A48 48 0 0 1 91.8 73.5 L50 50 Z" fill="#FFD700" />
+                            <path d="M91.8 73.5 A48 48 0 0 1 73.5 91.8 L50 50 Z" fill="#FFA500" />
+                            <path d="M73.5 91.8 A48 48 0 0 1 50 97.9 L50 50 Z" fill="#FFD700" />
+                            <path d="M50 97.9 A48 48 0 0 1 26.5 91.8 L50 50 Z" fill="#FFA500" />
+                            <path d="M26.5 91.8 A48 48 0 0 1 8.2 73.5 L50 50 Z" fill="#FFD700" />
+                            <path d="M8.2 73.5 A48 48 0 0 1 2 50 L50 50 Z" fill="#FFA500" />
+                            <path d="M2 50 A48 48 0 0 1 8.2 26.5 L50 50 Z" fill="#FFD700" />
+                            <path d="M8.2 26.5 A48 48 0 0 1 26.5 8.2 L50 50 Z" fill="#FFA500" />
+                            <path d="M26.5 8.2 A48 48 0 0 1 50 2 L50 50 Z" fill="#FFD700" />
+                            <circle cx="50" cy="50" r="5" fill="black" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card p-4">
+                        <div class="form-group">
+                            <label for="fileInput">SpinWheel</label>
+                            <input type="file" id="fileInput" accept=".xlsx" class="form-control-file" />
+                        </div>
+                        <div class="form-group">
+                            <label for="columnLetters">Enter Column Letters</label>
+                            <div id="columnLettersContainer">
+                                <div class="column-letter-wrapper">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control column-letter-input" />
+                                        <div class="input-group-append">
+                                            <button type="button" class="remove-column btn btn-sm">&times;</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="addColumn" type="button" class="btn btn-secondary mt-2">+</button>
+                            </div>
+                            <button id="processFile" class="btn btn-primary btn-block">Process File</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="text-center mt-5">Results</h2>
+        <div id="processingMessage" class="processing-message">Processing...</div>
+        <div id="currentPhase" class="mt-3"></div>
+        <h3 id="previousDataHeader" class="text-center mt-5" style="display: none;">Previous Data</h3>
+        <div id="previousData" class="previous-data-container"></div>
+    </div>
+
+    <script>
+        let phaseCounter = 1;
+
+        $(document).ready(function () {
+            function updateRemoveButtons() {
+                if ($('.column-letter-wrapper').length === 1) {
+                    $('.remove-column').hide();
+                } else {
+                    $('.remove-column').show();
+                }
+            }
+
+            updateRemoveButtons();
+
+            $('#addColumn').on('click', function () {
+                $('<div class="column-letter-wrapper mt-2"> \
+                    <div class="input-group"> \
+                         <input type="text" class="form-control column-letter-input" /> \
+                            <div class="input-group-append"> \
+                                  <button type="button" class="remove-column btn btn-sm">&times;</button> \
+                            </div> \
+                    </div> \
+                   </div>'
+                ).insertBefore('#addColumn'); 
+                updateRemoveButtons();
+            });
+
+
+            $('#columnLettersContainer').on('input', '.column-letter-input', function () {
+                $(this).val($(this).val().toUpperCase());
+            });
+
+            $('#columnLettersContainer').on('click', '.remove-column', function () {
+                if ($('.column-letter-wrapper').length > 1) {
+                    $(this).closest('.column-letter-wrapper').remove(); updateRemoveButtons();
+                }
+            });
+
+            $('#processFile').on('click', async function () {
+                const fileInput = $('#fileInput')[0];
+                const columnLetters = $('.column-letter-input').map(function () { return $(this).val().toUpperCase(); }).get();
+
+                if (fileInput.files.length === 0) {
+                    alert('Please select a file.');
+                    return;
+                }
+
+                if (columnLetters.some(letter => letter === "")) {
+                    alert('Please enter all column letters.');
+                    return;
+                }
+
+                const columnNumbers = columnLetters.map(letter => columnLetterToNumber(letter));
+                if (columnNumbers.includes(-1)) {
+                    alert('Invalid column letter.');
+                    return;
+                }
+
+                showProcessingMessage();
+                spinWheel();
+
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+
+                reader.onload = async function (event) {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    let jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    const headers = jsonData[0].map((_, index) => `Column${index + 1}`);
+                    jsonData = jsonData.map((row, rowIndex) => {
+                        if (rowIndex === 0) return headers;
+                        return headers.reduce((acc, header, colIndex) => {
+                            acc[header] = row[colIndex];
+                            return acc;
+                        }, {});
+                    });
+
+                    jsonData.shift();
+
+                    await delay(3000);
+                    await processExcelData(jsonData, columnNumbers);
+
+                    hideProcessingMessage();
+                    stopSpinWheel();
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+        });
+
+        function columnLetterToNumber(letter) {
+            let column = 0;
+            for (let i = 0; i < letter.length; i++) {
+                column = column * 26 + (letter.charCodeAt(i) - 'A'.charCodeAt(0)) + 1;
+            }
+            return column > 0 ? column : -1;
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showProcessingMessage() {
+            $('#processingMessage').show();
+        }
+
+        function hideProcessingMessage() {
+            $('#processingMessage').hide();
+        }
+
+        function spinWheel() {
+            const $wheel = $('#wheel');
+            const spins = 20;
+            const randomDegree = Math.floor(Math.random() * 360);
+            const totalDegree = spins * 360 + randomDegree;
+            $wheel.css({ 'transition': 'transform 3s cubic-bezier(0.2, 1, 0.3, 1)', 'transform': `rotate(${totalDegree}deg)` });
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    $wheel.css({
+                        'transition': 'none',
+                        'transform': `rotate(${randomDegree}deg)`
+                    });
+                    resolve();
+                }, 5000);
+            });
+        }
+
+        function stopSpinWheel() {
+            const $wheel = $('#wheel');
+            $wheel.css({
+                'transition': 'none',
+                'transform': `rotate(0deg)`
+            });
+        }
+
+        async function processExcelData(data, columnNumbers) {
+            showProcessingMessage();
+
+            const savedData = JSON.parse(sessionStorage.getItem('savedData')) || [];
+            const remainingData = data.filter(row => !savedData.find(saved => JSON.stringify(saved) === JSON.stringify(row)));
+
+            if (remainingData.length === 0) {
+                alert('No more data available.');
+                hideProcessingMessage();
+                return;
+            }
+
+            const randomData = getRandomEntries(remainingData, 50);
+            sessionStorage.setItem('savedData', JSON.stringify(savedData.concat(randomData)));
+
+            await delay(3000);
+
+            hideProcessingMessage();
+            displayCurrentPhaseData(randomData, columnNumbers, phaseCounter);
+            displayPreviousData(randomData, columnNumbers, phaseCounter);
+            phaseCounter++;
+        }
+
+        function getRandomEntries(data, count) {
+            const result = [];
+            const usedIndexes = new Set();
+
+            while (result.length < count && usedIndexes.size < data.length) {
+                const randomIndex = Math.floor(Math.random() * data.length);
+                if (!usedIndexes.has(randomIndex)) {
+                    result.push(data[randomIndex]);
+                    usedIndexes.add(randomIndex);
+                }
+            }
+
+            return result;
+        }
+
+        function displayCurrentPhaseData(data, columnNumbers, phase) {
+            const currentPhaseDiv = $('#currentPhase');
+            currentPhaseDiv.empty();
+            const phaseLabel = $('<div class="phase-label">').text(`Phase ${phase}`);
+            currentPhaseDiv.append(phaseLabel);
+
+            data.forEach(row => {
+                const rowData = columnNumbers.map(number => {
+                    const columnKey = `Column${number}`;
+                    return row[columnKey] || 'No Data';
+                }).join(' | '); // Using '|' as a separator
+                const rowDiv = $('<div class="processing-data">').text(rowData);
+                currentPhaseDiv.append(rowDiv);
+            });
+        }
+
+        function displayPreviousData(data, columnNumbers, phase) {
+            if (phaseCounter === 1) {
+                $('#previousDataHeader').show();
+                $('#previousData').show();
+            }
+
+            const previousDataDiv = $('#previousData');
+            const phaseBox = $('<div class="phase-box">');
+            const phaseTitle = $('<div class="phase-title">').text(`Phase ${phase}`);
+            const phaseDetails = $('<div class="phase-details">')
+                .html(`<p>Data Count: ${data.length}</p>`);
+            const showMoreLink = $('<div class="show-more">').text('Show More');
+            const exportLink = $(`<button type="button" class="btn btn-primary mt-2 export-phase" data-phase="${phase}">Export Phase ${phase} Data</button>`);
+
+            const cardContent = $('<div class="card-content">').html(
+                data.map(row => {
+                    const rowData = columnNumbers.map(number => {
+                        const columnKey = `Column${number}`;
+                        return row[columnKey] || 'No Data';
+                    }).join(' | ');
+                    return `<div>${rowData}</div>`;
+                }).join('')
+            );
+
+            phaseBox.append(phaseTitle, phaseDetails, showMoreLink, exportLink, cardContent);
+
+            showMoreLink.on('click', function () {
+                cardContent.toggleClass('show');
+                showMoreLink.text(cardContent.hasClass('show') ? 'Show Less' : 'Show More');
+            });
+
+            previousDataDiv.append(phaseBox);
+
+            exportLink.on('click', function () {
+                const phaseNumber = $(this).data('phase');
+                const phaseBox = $(`#previousData .phase-box:has([data-phase="${phaseNumber}"])`);
+                const rows = [];
+
+                phaseBox.find('.card-content div').each(function () {
+                    const row = $(this).text().split(' | ');
+                    rows.push(row);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, `Phase_${phaseNumber}`);
+
+                XLSX.writeFile(wb, `phase_${phaseNumber}_data.xlsx`);
+            });
+        }
+    </script>
+</body>
+
+</html>
